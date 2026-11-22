@@ -57,7 +57,16 @@ label{display:block;font-weight:600;margin:14px 0 6px}
 .bar{height:8px;background:var(--bg);border-radius:9px;overflow:hidden;margin:10px 0 6px}
 .bar i{display:block;height:100%;background:var(--sand);border-radius:9px}
 .phase{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:3px 9px;border-radius:99px;background:var(--panel2);color:var(--sand)}
-.phase.light{color:var(--ok)} .phase.taper{color:var(--sig)}
+.phase.found{color:var(--muted)} .phase.dev{color:var(--sand)} .phase.spec{color:var(--ok)} .phase.taper{color:var(--sig)}
+.strip{display:flex;gap:3px;margin-top:12px}
+.strip i{flex:1;height:10px;border-radius:3px;background:var(--line)}
+.strip i.dev{background:#6d6448} .strip i.spec{background:#4f7a3a} .strip i.taper{background:#8a4f22}
+.strip i.cur{outline:2px solid var(--fg);outline-offset:1px}
+.goals{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin-top:8px}
+.goals div{background:var(--bg);border-radius:10px;padding:8px 10px}
+.goals small{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.goals b{display:block;font-family:var(--display);font-size:26px;font-variant-numeric:tabular-nums;line-height:1.1}
+.goals span{font-size:11px;color:var(--muted)}
 details.card{padding:0}
 summary{list-style:none;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer}
 summary::-webkit-details-marker{display:none}
@@ -240,111 +249,256 @@ function weeksFor(dateStr){
   return Math.max(4, Math.min(16, w));
 }
 
-function phaseOf(w, N){
+// ---------- Phases ----------
+const BLOCKS = { found:"Fondations", dev:"Développement", spec:"Spécifique gibbush", taper:"Affûtage" };
+function blockOf(w, N){
   if (w === N) return "taper";
-  if (w % 4 === 0) return "light";
-  return "build";
+  const f = (w-1) / Math.max(1, N-2);
+  return f < .34 ? "found" : f < .67 ? "dev" : "spec";
 }
+function isLight(w, N){ return w < N && w % 4 === 0; }
+function weekOfDate(d){ return Math.max(1, Math.floor((d - S.start)/(7*DAY)) + 1); }
 
-// Renvoie les 6 séances (dim → ven) de la semaine w
+// ---------- Paliers : du niveau actuel jusqu'à l'objectif ----------
+// Point de départ estimé selon le niveau, si aucun test n'est noté
+const START_EST = { run2k:[660,570,500], run3k:[1050,900,790], pushups:[12,25,45], situps:[20,35,55], pullups:[0,4,10], swim400:[600,480,400] };
+function goalOf(id){ const t = TESTS.find(x => x.id === id); return t && t.t ? t.t[unitOf(S.unit).tier] : null; }
+// Ligne droite entre le dernier résultat noté et l'objectif, atteint l'avant-dernière semaine.
+// Quand tu notes un nouveau test, tout se recalcule à partir de lui.
+function milestone(id, w){
+  const t = TESTS.find(x => x.id === id), end = Math.max(2, S.weeks - 1);
+  const rec = S.tests.filter(x => x.id === id);
+  let a, wa;
+  if (rec.length){ const last = rec[rec.length-1]; a = last.v; wa = Math.min(end-1, weekOfDate(last.d)); }
+  else { a = START_EST[id][S.level]; wa = 1; }
+  let g = goalOf(id);
+  if (g === null) g = t.lower ? Math.round(a*.9) : Math.round(a*1.2);                    // pas de barème : 10 à 20 % de mieux
+  if (t.lower ? a <= g : a >= g) g = t.lower ? Math.round(a*.97) : Math.ceil(a*1.1 + 1); // objectif déjà atteint : on continue
+  if (w <= wa) return a;
+  const f = Math.min(1, (w - wa) / Math.max(1, end - wa));
+  // Progression réaliste maximale par semaine, pour éviter les blessures
+  const cap = WEEKLY_CAP[id] * (Math.min(w, end) - wa);
+  const step = Math.min(Math.abs(g - a) * f, cap);
+  return Math.round(a + Math.sign(g - a) * step);
+}
+const WEEKLY_CAP = { run2k:12, run3k:18, pushups:3, situps:3, pullups:1, swim400:10 };
+// Vrai si l'objectif de l'unité ne peut pas être atteint à temps avec une progression réaliste
+function goalTooFar(id){ const g = goalOf(id); return g !== null && finalGoal(id) !== g && !(TESTS.find(x=>x.id===id).lower ? finalGoal(id) < g : finalGoal(id) > g); }
+function finalGoal(id){ return milestone(id, S.weeks); }
+
+// ---------- Séances de la semaine w (dimanche → vendredi) ----------
 function week(w){
   const u = unitOf(S.unit), N = S.weeks, L = S.level, p = u.p, tier = u.tier;
-  const ph = phaseOf(w, N);
-  const k = ph === "taper" ? .5 : ph === "light" ? .7 : 1;
-  const f = N > 1 ? (w-1)/(N-1) : 1;                  // progression 0 → 1
+  const B = blockOf(w, N), light = isLight(w, N), rot = w % 3;
+  const k = B === "taper" ? .5 : light ? .7 : 1;
+  const f = N > 1 ? (w-1)/(N-1) : 1;
   const lerp = (a, b) => a + (b-a)*f;
   const n = (a, b, min=1) => Math.max(min, Math.round(lerp(a, b) * k));
-  const kg = Math.round(([6,10,14][L] + (tier === 1 ? 4 : 0) + (p.carry === 3 ? 2 : 0)) * (ph === "taper" ? .6 : 1));
+  const kg = Math.max(4, Math.round(([6,10,14][L] + (tier === 1 ? 4 : 0) + (p.carry === 3 ? 2 : 0)) * ({found:.6, dev:.85, spec:1, taper:.6}[B])));
+  const T = BLOCKS[B];
+
+  // Paliers de la semaine
+  const t2k = milestone("run2k", w), fin2k = finalGoal("run2k");
+  const pu = milestone("pushups", w), pl = milestone("pullups", w), su = milestone("situps", w);
+  const perKm = s => mmss(s/2), per400 = s => mmss(s/5), per800 = s => mmss(s/2.5);
+  const warm = "Échauffement : 10 min de footing lent, puis montées de genoux, talons-fesses et 3 accélérations";
+  const cool = "Retour au calme : 5 min de marche et étirements";
 
   const intervals = () => {
-    const len = p.spd >= 3 ? 200 : 400;
-    const reps = n([4,6,8][L] + (p.spd>=3?2:0), [8,10,12][L] + (p.spd>=3?2:0));
-    return { t:"Fractionné", m:45, tag:"Vitesse", items:[
-      "Échauffement : 10 min de footing lent, puis montées de genoux, talons-fesses et 3 accélérations",
-      reps+" × "+len+" m vite (85 % de ton max). Récupération : "+(len===200?"60":"90")+" s en marchant",
-      "Retour au calme : 5 min de marche et étirements des mollets et des cuisses"]};
+    if (B === "found"){
+      if (t2k > 600) return { t:"Course-marche", m:35, tag:"Vitesse · "+T, items:[
+        "Échauffement : 5 min de marche rapide",
+        n(5,8)+" × (2 min de course + 1 min de marche)",
+        "Le but de cette phase : courir sans t'arrêter. Pas de chrono pour l'instant", cool]};
+      return { t:"Fractionné court", m:40, tag:"Vitesse · "+T, items:[ warm,
+        n(5,8)+" × 200 m en "+mmss(t2k/10 + 3)+", récupération 90 s en marchant",
+        "Travaille la technique : buste droit, bras qui balancent, pas courts et rapides", cool]};
+    }
+    if (B === "dev"){
+      if (rot === 0) return { t:"Fractionné 400 m", m:45, tag:"Vitesse · "+T, items:[ warm,
+        n(5,8)+" × 400 m en "+per400(t2k)+" : c'est l'allure de ton palier de la semaine. Récupération 90 s", cool]};
+      if (rot === 1) return { t:"Fractionné 800 m", m:45, tag:"Vitesse · "+T, items:[ warm,
+        n(3,5)+" × 800 m en "+per800(t2k + 10)+", récupération 2 min", cool]};
+      return { t:"Côtes", m:40, tag:"Vitesse · "+T, items:[ warm,
+        n(8,12)+" × 30 s de sprint en montée, retour en marchant", "Pas de côte près de chez toi ? Des escaliers", cool]};
+    }
+    if (B === "spec"){
+      if (rot === 0) return { t:"Allure objectif", m:45, tag:"Vitesse · "+T, items:[ warm,
+        "4 × 500 m en "+mmss(fin2k/4)+" : c'est l'allure de ton objectif final sur 2 km ("+mmss(fin2k)+"). Récupération 60 s", cool]};
+      if (rot === 1) return { t:"Pyramide", m:50, tag:"Vitesse · "+T, items:[ warm,
+        "200, 400, 600, 800, 600, 400, 200 m à "+perKm(fin2k)+" par km (ton allure objectif). Récupération : la moitié du temps de course", cool]};
+      return { t:"2 × 1 km + départs couchés", m:45, tag:"Vitesse · "+T, items:[ warm,
+        "2 × 1 km en "+perKm(fin2k)+", 3 min de récupération",
+        "Puis 6 × 60 m de sprint, départ couché au sol, comme au gibbush", cool]};
+    }
+    return { t:"Rappel de vitesse", m:30, tag:"Vitesse · "+T, items:[ warm,
+      "4 × 200 m à ton allure objectif, récupération complète", "Pas plus : tu gardes ta fraîcheur", cool]};
   };
+
   const strength = (heavy) => {
-    const sets = Math.min(5, 3 + Math.floor(f*2.5));
-    const pull = [ n(3,6)+" tractions négatives (descends lentement en 5 s)", n(3,10)+" tractions", n(8,18)+" tractions" ][L];
-    const it = [ sets+" tours de :", n([10,18,25][L],[25,40,55][L])+" pompes", pull,
-      n([15,25,35][L],[35,50,65][L])+" abdos", n([15,25,30][L],[35,45,60][L])+" squats",
-      "Gainage "+n([30,45,60][L],[60,90,120][L])+" s", "Repos 90 s entre les tours" ];
-    if (heavy || p.str >= 3) it.splice(6, 0, "4 × 40 m de marche en portant deux jerricans ou deux sacs lourds (un dans chaque main)");
-    return { t: heavy ? "Force et port de charge" : "Force au poids du corps", m:50, tag:"Force", items:it };
+    const sets = { found:3, dev:4, spec:5, taper:2 }[B];
+    const pct = { found:.5, dev:.6, spec:.7, taper:.5 }[B];
+    const r = (x, mult=1) => Math.max(3, Math.round(x * pct * mult));
+    let push;
+    if (pu < 8) push = r(pu + 10)+" pompes sur les genoux";
+    else if (pu < 15) push = r(pu + 6)+" pompes mains surélevées (sur un banc ou une chaise)";
+    else if (B === "found") push = r(pu)+" pompes classiques";
+    else if (B === "dev") push = rot === 0 ? r(pu, .7)+" pompes lentes : 3 s pour descendre, 1 s pour remonter" : r(pu)+" pompes classiques";
+    else if (B === "spec") push = rot === 0 ? r(pu, .5)+" pompes explosives (les mains décollent du sol)" : rot === 1 ? r(pu, .7)+" pompes avec un sac à dos lesté" : "1 min de pompes au rythme du test ("+Math.round(pu/2)+" en 1 min)";
+    else push = r(pu)+" pompes classiques";
+    let pull;
+    if (pl < 1) pull = n(5,10)+" rowings australiens (allongé sous une table solide, tire ta poitrine vers le bord) + 3 tractions négatives (saute en haut, descends en 5 s)";
+    else if (pl < 5) pull = "3 tractions négatives lentes + "+Math.max(1, pl-1)+" tractions strictes";
+    else if (B === "spec" && pl >= 10) pull = rot === 1 ? r(pl, .6)+" tractions avec un sac à dos de 5 kg" : r(pl)+" tractions strictes";
+    else if (B === "spec") pull = "Tractions en échelle : 1, 2, 3… jusqu'à "+Math.max(2, Math.round(pl*.6))+", puis tu redescends";
+    else if (B === "dev" && rot === 2) pull = r(pl)+" tractions prise serrée (paumes vers toi)";
+    else pull = r(pl)+" tractions strictes";
+    const abs = B === "found" ? r(su)+" crunchs"
+      : B === "dev" ? r(su)+" relevés de buste complets (pieds bloqués)"
+      : rot === 0 ? "1 min de relevés de buste au rythme du test ("+Math.round(su/2)+" en 1 min)" : r(su, .4)+" V-ups (jambes et buste se lèvent ensemble)";
+    const legs = B === "found" ? n(15,30)+" squats"
+      : B === "dev" ? n(10,16)+" fentes marchées par jambe"
+      : n(10,16)+" squats sautés + "+n(8,12)+" fentes par jambe avec un sac de "+kg+" kg";
+    const core = B === "found" ? "Gainage "+n([30,45,60][L],[60,90,120][L])+" s"
+      : B === "dev" ? "Gainage latéral "+n(20,45)+" s de chaque côté"
+      : "Gainage avec touches d'épaules : "+n(20,40)+" touches";
+    const it = [ sets+" tours de :", push, pull, abs, legs, core ];
+    if (heavy || p.str >= 3) it.push(n(3,6)+" × 40 m en portant deux jerricans ou deux sacs lourds, un dans chaque main");
+    it.push("90 s de repos entre les tours");
+    return { t:"Force", m:50, tag:"Force · "+T, items:it };
   };
+
   const longRun = () => {
-    const km = Math.round(lerp([3,4,5][L], [5,7,9][L] + (p.end===3?2:0)) * k * 2) / 2;
-    return { t:"Course longue", m: Math.round(km*6.5), tag:"Endurance", items:[
-      km+" km à allure facile : tu dois pouvoir parler en courant",
-      "Sur la dernière minute, accélère pour finir fort",
-      "Bois avant de partir. En été, cours avant 8 h"]};
+    const km = Math.round(lerp([3,4,5][L], [5,7,9][L] + (p.end === 3 ? 2 : 0)) * k * 2) / 2;
+    if (B === "found") return { t:"Course longue facile", m:Math.round(km*6.5), tag:"Endurance · "+T, items:[
+      km+" km à allure facile : tu dois pouvoir parler en courant", "Si tu dois marcher, marche 1 min puis repars", "Bois avant de partir. En été, cours avant 8 h"]};
+    if (B === "dev") return { t:"Course progressive", m:Math.round(km*6.3), tag:"Endurance · "+T, items:[
+      km+" km : les deux premiers tiers faciles, le dernier tiers à allure soutenue", "Bois avant de partir. En été, cours avant 8 h"]};
+    if (B === "spec") return rot % 2 ? { t:"Fartlek", m:Math.round(km*6.2), tag:"Endurance · "+T, items:[
+      km+" km en alternant 1 min vite et 2 min lent", "Termine par 3 sprints de 50 m"]}
+      : { t:"Course en terrain difficile", m:Math.round(km*7), tag:"Endurance · "+T, items:[
+      km+" km sur du sable, des chemins ou des côtes", "Le terrain des gibbushim n'est jamais plat : habitue tes chevilles"]};
+    return { t:"Footing léger", m:25, tag:"Endurance · "+T, items:[ Math.max(2, km)+" km très faciles"]};
   };
+
   const tempo = () => {
     const km = Math.max(1.5, Math.round(lerp([1.5,2,3][L], [3,4,5][L]) * k * 2) / 2);
-    return { t:"Course tempo", m:35, tag:"Endurance", items:[
+    if (B === "spec") return { t:"Contrôle du palier", m:30, tag:"Endurance · "+T, items:[
       "Échauffement : 1 km lent",
-      km+" km à allure soutenue et régulière, un peu plus lent que ton 2 km chrono",
-      "Retour au calme : 5 min de marche"]};
+      "2 km en "+mmss(t2k)+" ("+perKm(t2k)+" par km) : c'est ton palier de la semaine. Si tu y arrives, tu es dans les temps pour ton objectif",
+      "Note ton temps dans Tests : le programme s'ajuste", cool]};
+    return { t:"Course tempo", m:35, tag:"Endurance · "+T, items:[
+      "Échauffement : 1 km lent",
+      km+" km à "+perKm(t2k + 40)+" par km, à allure régulière", cool]};
   };
+
+  const special = () => {
+    if (S.unit === "golani") return "Marche rapide de 4 km à 6 km/h (10 min par km) avec un sac de "+kg+" kg, comme la marche avec brancard du gibbush Golani";
+    if (S.unit === "tsanhanim") return "Reptation dans le sable : 4 × 25 m. Puis 3 km de course : vise moins de 15 min";
+    if (S.unit === "yahalom") return "6 × 50 m de course avec un sac de sable sur les épaules";
+    if (S.unit === "669") return "À plusieurs : portez un brancard ou un ami en équipe sur 200 m, en changeant de place sans vous arrêter";
+    if (S.unit === "kfir") return "Termine par un Bar-Or d'entraînement : 2 km, pompes 2 min, abdos 2 min";
+    if (S.unit === "s13") return "À la piscine cette semaine : nage en groupe, côte à côte, sur 200 m";
+    if (["matkal","shaldag","maglan","duvdevan","egoz","oketz"].includes(S.unit)) return "Navigation : 5 km de marche avec une carte et sans GPS, avec un ami";
+    return "Termine par 200 m en portant un sac de "+kg+" kg";
+  };
+
   const gibbushSim = () => {
-    const sk = p.carry >= 3 ? [10,15,20][L] : [8,10,15][L];
-    if (S.unit === "shiryon" || S.unit === "totchanim") return { t:"Circuit combat", m:45, tag:"Physique du poste", items:[
-      n(4,8)+" × 30 m en portant deux jerricans ou deux sacs lourds",
-      n(3,5)+" × 10 soulevés d'un sac de "+sk+" kg du sol jusqu'à la poitrine, dos bien droit",
-      n(6,10)+" sprints de 50 m",
-      "Gainage : 3 × "+n(30,90)+" s",
-      "Pas de gibbush en général pour ces postes : ici on prépare le corps aux classes et au travail sur le char ou le canon"]};
-    return { t:"Simulation gibbush", m:50, tag:"Spécial gibbush", items:[
-      n([6,8,10][L],[10,14,16][L])+" sprints de 50 m, départ couché au sol (tu te lèves et tu pars au signal)",
-      "Le triangle, "+n(2,5)+" fois : 15 m de reptation, 15 m en portant un sac de "+sk+" kg, 15 m de sprint",
-      n(3,6)+" × 20 m de marche de l'ours (à quatre pattes, genoux décollés)",
-      "Tenir le sac au-dessus de la tête : "+n(3,5)+" × "+n(20,60)+" s",
-      n([10,15,20][L],[20,30,40][L])+" burpees",
-      "À faire à 4 si tu peux : porter un brancard lesté (ou un ami) sur 4 × 50 m. C'est le cœur des gibbushim",
-      "À l'entraînement, garde un peu de réserve : Tsahal conseille de ne pas aller jusqu'à l'épuisement. Le « je ne lâche rien », c'est pour le jour du gibbush"]};
-  };
-  const ruck = () => ({ t:"Marche avec sac", m:n(30,75), tag:"Port de charge", items:[
-      n(30,75)+" min de marche rapide avec un sac à dos de "+kg+" kg (bouteilles d'eau, livres ou sable bien calés)",
-      "Si possible en montée ou sur terrain irrégulier",
-      "Chaussures déjà faites et chaussettes sèches : protège tes pieds des ampoules"]});
-  const swim = (hard) => {
-    const reps = n([4,6,8][L],[8,12,16][L]);
-    return { t: hard ? "Natation : fractionné et aisance" : "Natation : endurance", m:50, tag:"Natation", items: hard ? [
-      "Échauffement : 200 m tranquilles",
-      reps+" × 50 m crawl rapide, 20 s de repos entre chaque",
-      "Aller-retour de 100 m sans toucher le bord, comme la nage jusqu'à la bouée du gibbush",
-      "Aisance avec masque et tuba : 4 × 25 m la tête dans l'eau, calmement",
-      "Toujours avec un maître-nageur ou un partenaire qui te surveille. Ne fais jamais d'apnée seul : la perte de connaissance sous l'eau arrive sans prévenir",
-      "Retour au calme : 100 m dos"] : [
-      "Échauffement : 200 m tranquilles",
-      n([300,500,800][L],[800,1200,1500][L])+" m de crawl en continu, à allure régulière",
-      "Une fois par mois : 400 m chrono (distance citée pour le gibbush Shayetet), à noter dans Tests",
-      "4 × 50 m de jambes seules avec une planche",
-      "Retour au calme : 100 m"]};
-  };
-  const mobility = () => ({ t:"Mobilité et récupération", m:20, tag:"Facultatif", opt:true, items:[
-      "20 min d'étirements : hanches, ischios, mollets, épaules",
-      "Rouleau de massage ou balle de tennis sous les pieds et les mollets",
-      "Dors au moins 8 h cette nuit : c'est là que tu progresses"]});
-  const mini = () => ({ t:"Mini-gibbush à la maison", m:75, tag:"Test de résistance", items:[
+    const sk = Math.max(4, Math.round((p.carry >= 3 ? [10,15,20][L] : [8,10,15][L]) * ({found:.6, dev:.85, spec:1, taper:.6}[B])));
+    if (S.unit === "shiryon" || S.unit === "totchanim"){
+      const it = B === "found"
+        ? [n(4,6)+" × 30 m en portant deux sacs lourds", "3 × 10 soulevés de terre d'un sac de "+sk+" kg, dos bien droit", n(5,7)+" sprints de 50 m", "Gainage 3 × "+n(30,60)+" s"]
+        : B === "dev"
+        ? [n(5,8)+" × 40 m en portant deux jerricans", "4 × 8 épaulés d'un sac de "+sk+" kg (du sol jusqu'aux épaules)", "3 × 10 montées sur une chaise avec le sac", "Gainage latéral 3 × "+n(20,45)+" s"]
+        : ["4 tours sans pause : 40 m avec jerricans, 10 épaulés du sac de "+sk+" kg, 10 burpees, 50 m de sprint", "Gainage avec touches d'épaules : "+n(20,40)];
+      return { t:"Circuit combat", m:45, tag:"Physique du poste · "+T, items: it.concat("En général, pas de gibbush pour ces postes : on prépare le corps aux classes et au travail sur le char ou le canon")};
+    }
+    if (B === "found") return { t:"Technique gibbush", m:40, tag:"Spécial gibbush · "+T, items:[
+      n(5,8)+" sprints de 30 m, départ couché au sol, au signal",
+      "Reptation, 4 × 10 m : corps à plat, tu avances coude et genou opposés. Lentement, la technique d'abord",
+      "Marche de l'ours, 3 × 15 m (à quatre pattes, genoux décollés)",
+      "3 × 20 m en portant un sac de "+sk+" kg sur l'épaule, puis tu changes d'épaule",
+      "Pas de chrono dans cette phase : apprends les mouvements"]};
+    if (B === "dev") return { t:"Simulation gibbush", m:50, tag:"Spécial gibbush · "+T, items:[
+      n(8,12)+" sprints de 50 m, départ couché au sol",
+      "Le triangle, "+n(3,5)+" fois : 15 m de reptation, 15 m en portant un sac de "+sk+" kg, 15 m de sprint",
+      "Tenir le sac au-dessus de la tête : 3 × "+n(20,45)+" s",
+      n(15,25)+" burpees",
+      "À 4 si tu peux : porter un brancard lesté (ou un ami) sur 4 × 50 m",
+      "Garde un peu de réserve : Tsahal conseille de ne pas aller jusqu'à l'épuisement à l'entraînement"]};
+    if (B === "spec") return { t:"Enchaînement sous fatigue", m:60, tag:"Spécial gibbush · "+T, items:[
       "Échauffement : 10 min",
-      "Enchaîne sans pause : 1 km rapide, 20 burpees, 3 × 30 m de sprint avec sac, 20 m de reptation, 1 km rapide",
-      "2 min de repos, puis recommence. "+(L===0?"2":L===1?"3":"4")+" tours au total",
-      "Demande à un ami de te donner les ordres en criant et sans prévenir, comme au gibbush",
-      "Note comment tu te sens à la fin : c'est un entraînement du mental"]});
+      n(2,4)+" tours sans pause : 1 km rapide, puis le triangle × 3 avec un sac de "+sk+" kg, 60 s de sac au-dessus de la tête, 20 burpees, 100 m de sprint",
+      special(),
+      "Le but : rester propre et rapide alors que tu es déjà fatigué, comme le 3e jour d'un gibbush"]};
+    return { t:"Dernière simulation, en douceur", m:30, tag:"Spécial gibbush · "+T, items:[
+      "Échauffement : 10 min", "Un seul tour du triangle, à 70 %", "Tu gardes ta fraîcheur pour le jour J"]};
+  };
+
+  const ruck = () => {
+    if (B === "found") return { t:"Marche avec sac", m:30, tag:"Port de charge · "+T, items:[
+      "30 min de marche rapide avec un sac à dos de "+kg+" kg (bouteilles d'eau ou livres bien calés)", "Règle les bretelles : le sac doit être collé au dos", "Chaussures déjà faites et chaussettes sèches contre les ampoules"]};
+    if (B === "dev") return { t:"Marche avec sac", m:n(45,60), tag:"Port de charge · "+T, items:[
+      n(45,60)+" min de marche rapide avec "+kg+" kg, en montée ou sur terrain irrégulier", "Protège tes pieds : chaussettes sèches, pas de chaussures neuves"]};
+    const km = n(5,8);
+    return { t:"Marche chronométrée", m:km*10, tag:"Port de charge · "+T, items:[
+      km+" km avec "+kg+" kg en moins de "+(km*10)+" min (6 km/h, le rythme des marches de gibbush)", "Si tu es en avance, ne cours pas : marche plus vite"]};
+  };
+
+  const swim = (hard) => {
+    if (B === "found") return { t:"Natation : technique", m:45, tag:"Natation · "+T, items:[
+      "Échauffement : 200 m tranquilles",
+      "8 × 25 m de crawl en respirant tous les 3 mouvements, des deux côtés",
+      "4 × 25 m en rattrapé (une main attend l'autre devant)",
+      n(200,400)+" m de crawl continu, sans t'arrêter",
+      "Toujours avec un maître-nageur ou un partenaire qui te surveille"]};
+    if (B === "dev") return hard ? { t:"Natation : fractionné", m:50, tag:"Natation · "+T, items:[
+      "Échauffement : 200 m", n(8,12)+" × 50 m de crawl rapide, 20 s de repos",
+      "Aller-retour de 100 m sans toucher le bord, comme la nage jusqu'à la bouée du gibbush",
+      "Ne fais jamais d'apnée seul : la perte de connaissance sous l'eau arrive sans prévenir"]}
+      : { t:"Natation : endurance", m:50, tag:"Natation · "+T, items:[
+      "Échauffement : 200 m", n(600,1000)+" m de crawl continu à allure régulière", "4 × 50 m de jambes seules avec une planche"]};
+    return hard ? { t:"Natation : allure objectif", m:50, tag:"Natation · "+T, items:[
+      "Échauffement : 200 m",
+      "400 m chrono : vise "+mmss(milestone("swim400", w))+" (ton palier de la semaine), puis note-le dans Tests",
+      "Aisance avec masque et tuba : 4 × 25 m la tête dans l'eau, calmement, sous surveillance",
+      "Retour au calme : 100 m dos"]}
+      : { t:"Natation : endurance en groupe", m:50, tag:"Natation · "+T, items:[
+      "Échauffement : 200 m", n(1000,1500)+" m de crawl continu", "Si tu peux, nage à plusieurs côte à côte : au gibbush on nage en groupe"]};
+  };
+
+  const mobility = () => ({ t:"Mobilité et récupération", m:20, tag:"Facultatif", opt:true, items:[
+    "20 min d'étirements : hanches, ischios, mollets, épaules",
+    "Rouleau de massage ou balle de tennis sous les pieds et les mollets",
+    "Dors au moins 8 h cette nuit : c'est là que tu progresses"]});
+
+  const testDay = () => {
+    const list = ["2 km chrono", "pompes 2 min", "abdos 2 min", "tractions max"];
+    if (S.unit === "tsanhanim") list.push("3 km chrono un autre jour");
+    if (p.swim >= 2) list.push("400 m de nage un autre jour");
+    return { t:"Jour de tests", m:45, tag:"Bilan", items:[
+      "Échauffement : 10 min de footing lent",
+      "Passe tes tests : "+list.join(", ")+". Repos de 10 min après le 2 km",
+      "Note tout dans l'onglet Tests : tes paliers et tes allures se recalculent à partir de tes nouveaux résultats",
+      "Palier visé cette semaine : 2 km en "+mmss(t2k)+", "+pu+" pompes, "+su+" abdos, "+pl+" tractions"]};
+  };
+  const mini = () => ({ t:"Mini-gibbush à la maison", m:60, tag:"Test de résistance", items:[
+    "Échauffement : 10 min",
+    "Enchaîne : 1 km rapide, 20 burpees, 3 triangles avec sac, 20 m de reptation, 1 km rapide",
+    "2 min de repos, puis recommence. "+(L === 0 ? "2" : L === 1 ? "3" : "4")+" tours au total",
+    "Demande à un ami de te donner les ordres sans prévenir, comme au gibbush"]});
   const taperDay = () => ({ t:"Repos actif", m:20, tag:"Avant le gibbush", items:[
-      "15 min de footing très lent et quelques étirements, pas plus",
-      "Prépare tes affaires, mange normalement, bois beaucoup",
-      "Couche-toi tôt. Tu es prêt : maintenant on récupère"]});
+    "15 min de footing très lent et quelques étirements, pas plus",
+    "Prépare tes affaires, mange normalement, bois beaucoup",
+    "Couche-toi tôt. Tu es prêt : maintenant tu récupères"]});
 
   let days;
-  if (p.swim >= 2)      days = [intervals(), swim(false), strength(), gibbushSim(), longRun(), swim(true)];
+  if (p.swim >= 2)                   days = [intervals(), swim(false), strength(), gibbushSim(), longRun(), swim(true)];
   else if (p.str >= 3 && p.end <= 1) days = [intervals(), strength(true), tempo(), gibbushSim(), strength(true), mobility()];
-  else                  days = [intervals(), strength(), longRun(), gibbushSim(), (p.carry>=3 && w%2) ? ruck() : tempo(), mobility()];
-  if (p.carry >= 3 && p.end >= 3 && w%2 === 0 && ph === "build") days[5] = ruck();   // élite : marche en plus
-  if (ph === "light") days[4] = mini();
-  if (ph === "taper"){ days[3] = mini(); days[3].t = "Dernière simulation, en douceur"; days[3].items = days[3].items.slice(0,2).concat("Un seul tour, à 70 % : tu gardes la fraîcheur"); days[4] = taperDay(); days[5] = mobility(); }
+  else                               days = [intervals(), strength(), longRun(), gibbushSim(), (p.carry >= 3 && w % 2) ? ruck() : tempo(), mobility()];
+  if (p.carry >= 3 && p.end >= 3 && w % 2 === 0 && !light && B !== "taper") days[5] = ruck();
+  if (light){ days[3] = mini(); days[4] = testDay(); }
+  if (B === "taper"){ days[4] = taperDay(); days[5] = mobility(); }
   return days;
 }
 
@@ -414,12 +568,28 @@ function heroHTML(){
 
 function renderProg(){
   if (viewWeek === null) viewWeek = curWeek();
-  const w = viewWeek, ph = phaseOf(w, S.weeks), days = week(w);
+  const w = viewWeek, B = blockOf(w, S.weeks), light = isLight(w, S.weeks), days = week(w);
   const total = S.weeks*5, done = Object.keys(S.done).filter(k => !k.endsWith("d5")).length;
-  const label = {build:"Progression", light:"Semaine allégée + mini-gibbush", taper:"Affûtage avant le gibbush"}[ph];
+  const BLOCK_TXT = { found:"Tu construis la base : technique, souffle, versions faciles des exercices.",
+    dev:"Tu montes en volume et en intensité : exercices plus durs, premiers sacs et brancards.",
+    spec:"Tu travailles comme au gibbush : allure objectif, enchaînements sous fatigue, épreuves de ton unité.",
+    taper:"Tu réduis tout pour arriver frais et en pleine forme." };
+  // Phases du programme, pour la frise
+  const phases = []; for (let i = 1; i <= S.weeks; i++) phases.push(blockOf(i, S.weeks));
+  const strip = '<div class="strip">'+phases.map((b,i) => '<i class="'+b+(i+1===w?" cur":"")+'" title="'+BLOCKS[b]+'"></i>').join("")+'</div>';
+  const goals = [["run2k","2 km",true],["pushups","pompes"],["situps","abdos"],["pullups","tractions"]];
+  if (S.unit === "tsanhanim") goals.push(["run3k","3 km",true]);
+  if (unitOf(S.unit).p.swim >= 2) goals.push(["swim400","400 m nage",true]);
+  const gl = goals.map(([id,lab,time]) => { const v = milestone(id, w), g = finalGoal(id);
+    return '<div><small>'+lab+'</small><b>'+(time?mmss(v):v)+'</b><span>objectif '+(time?mmss(g):g)+'</span></div>'; }).join("");
   let h = heroHTML()
-    + '<div class="card"><div class="row between"><button class="btn2" id="prev" aria-label="Semaine précédente">‹</button><div style="text-align:center"><h3>Semaine '+w+' / '+S.weeks+'</h3><span class="phase '+ph+'">'+label+'</span></div><button class="btn2" id="nxt" aria-label="Semaine suivante">›</button></div>'
-    + '<div class="bar"><i style="width:'+Math.min(100,Math.round(done/total*100))+'%"></i></div><div class="muted">'+done+' séances faites sur '+total+(w===curWeek()?" · semaine en cours":"")+'</div></div>';
+    + '<div class="card"><div class="row between"><button class="btn2" id="prev" aria-label="Semaine précédente">‹</button><div style="text-align:center"><h3>Semaine '+w+' / '+S.weeks+'</h3><span class="phase '+B+'">'+BLOCKS[B]+(light?" · allégée + tests":"")+'</span></div><button class="btn2" id="nxt" aria-label="Semaine suivante">›</button></div>'
+    + strip + '<p class="muted" style="margin:8px 0 0">'+BLOCK_TXT[B]+'</p></div>'
+    + '<div class="card"><div class="eyebrow">Tes paliers cette semaine</div><div class="goals">'+gl+'</div>'
+    + '<p class="muted" style="margin:10px 0 0">Calculés entre ton dernier résultat et l\'objectif de ton unité. Note tes nouveaux tests : tout se recalcule.</p>'
+    + (goals.some(([id]) => goalTooFar(id)) ? '<p class="muted" style="margin:8px 0 0;color:var(--sand)">Pour certains tests, l\'objectif de ton unité est trop loin pour ta date si tu veux progresser sans te blesser. Le programme vise donc la meilleure progression réaliste. Continue après ton gibbush, ou commence plus tôt si tu le peux.</p>' : '')
+    + '</div>'
+    + '<div class="card"><div class="bar" style="margin-top:0"><i style="width:'+Math.min(100,Math.round(done/total*100))+'%"></i></div><div class="muted">'+done+' séances faites sur '+total+(w===curWeek()?" · semaine en cours":"")+'</div></div>';
   days.forEach((s, i) => {
     const key = "w"+w+"d"+i, ok = !!S.done[key];
     h += '<details class="card'+(ok?" done":"")+(s.opt?" opt":"")+'"><summary><div class="day">'+DAYS[i]+'</div><div class="st"><span class="tag">'+esc(s.tag)+'</span><b>'+esc(s.t)+'</b><small>~'+s.m+' min</small></div><div class="tick">'+(ok?"✓":"")+'</div></summary>'
@@ -459,6 +629,7 @@ function renderTests(){
       : '<b class="'+(ok?"ok":"")+'">'+fmt(goal)+'</b><div class="muted">'+(ok?"atteint ✓":best===null?"à tester":(t.lower?"encore "+mmss(best-goal):"encore "+(goal-best)+" rép."))+'</div>';
     h += '<div class="card"><div class="tgrid"><div><div class="eyebrow">'+esc(t.n)+'</div><b>'+(best===null?"–":fmt(best))+'</b><div class="muted">record</div></div>'
       + '<div style="text-align:right"><div class="eyebrow">Objectif</div>'+right+'</div></div>'
+      + '<div class="muted" style="margin-top:6px">Palier de cette semaine : <b style="color:var(--fg)">'+fmt(milestone(t.id, curWeek()))+'</b></div>'
       + (t.note ? '<div class="muted" style="margin-top:6px">'+esc(t.note)+'</div>' : '')
       + spark(vals, t.lower)
       + '<div class="row" style="margin-top:10px"><input id="in-'+t.id+'" inputmode="numeric" placeholder="'+(t.time?"Temps, ex. 8:45":"Répétitions, ex. 42")+'" aria-label="'+esc(t.n)+'"><button class="btn2" data-add="'+t.id+'">Noter</button></div></div>';
