@@ -1,0 +1,11 @@
+{
+  "name": "Tsav : prépa gibbush",
+  "short_name": "Tsav",
+  "description": "Choisis ton unité, reçois un programme pour être prêt au gibbush et au giyous.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#12160f",
+  "theme_color": "#12160f",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

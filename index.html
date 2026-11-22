@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tsav</title>
+<meta name="theme-color" content="#12160f">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Inter:wght@400;500;700&display=swap">
+<style>
+/* Appli une colonne, max 560px, onglets fixes en bas. Olive nuit + sable + orange signal */
+:root{
+  --bg:#12160f; --panel:#1b2117; --panel2:#232b1e; --line:#323d2b; --fg:#ece6d6; --muted:#9aa48c;
+  --sand:#d9c89e; --sig:#ff8a3d; --ok:#8fd16a;
+  --display:"Big Shoulders Display",Impact,sans-serif; --body:Inter,system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 16px) max(16px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 90px) max(16px,env(safe-area-inset-left))}
+h1,h2,h3{font-family:var(--display);font-weight:900;letter-spacing:.01em;margin:0;text-wrap:balance;text-transform:uppercase}
+h1{font-size:44px;line-height:.95}
+h2{font-size:28px;margin:22px 0 10px}
+h3{font-size:20px}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--sand);font-weight:700}
+.muted{color:var(--muted);font-size:13.5px}
+button{font:inherit;cursor:pointer;border:0;color:inherit}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--sig);outline-offset:2px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
+.btn{background:var(--sig);color:#1a0d02;font-weight:700;padding:14px 18px;border-radius:10px;font-size:16px;width:100%}
+.btn:disabled{opacity:.4;cursor:default}
+.btn2{background:transparent;border:1px solid var(--line);padding:10px 14px;border-radius:10px;font-weight:600}
+input{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--fg);padding:12px;border-radius:10px;font:inherit}
+label{display:block;font-weight:600;margin:14px 0 6px}
+.row{display:flex;gap:8px;align-items:center}
+.between{justify-content:space-between}
+
+/* Choix d'unité */
+.cat{margin:18px 0 8px}
+.units{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.unit{background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:2px;min-width:0}
+.unit b{font-family:var(--display);font-size:19px;text-transform:uppercase;line-height:1.05}
+.unit .heb{color:var(--sand);font-size:13px}
+.unit small{color:var(--muted);font-size:12px}
+.unit.sel{border-color:var(--sig);background:var(--panel2)}
+.steps{display:flex;gap:6px;margin:14px 0 18px}
+.steps i{flex:1;height:4px;border-radius:9px;background:var(--line)}
+.steps i.on{background:var(--sig)}
+
+/* Tableau de bord */
+.hero{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin-bottom:14px}
+.count{text-align:right}
+.count b{font-family:var(--display);font-size:48px;line-height:1;color:var(--sig);font-variant-numeric:tabular-nums}
+.count small{display:block;color:var(--muted);font-size:12px}
+.bar{height:8px;background:var(--bg);border-radius:9px;overflow:hidden;margin:10px 0 6px}
+.bar i{display:block;height:100%;background:var(--sand);border-radius:9px}
+.phase{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:3px 9px;border-radius:99px;background:var(--panel2);color:var(--sand)}
+.phase.light{color:var(--ok)} .phase.taper{color:var(--sig)}
+details.card{padding:0}
+summary{list-style:none;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer}
+summary::-webkit-details-marker{display:none}
+.day{width:44px;flex:none;text-align:center;font-family:var(--display);font-size:15px;color:var(--muted);text-transform:uppercase;line-height:1.1}
+.day b{display:block;font-size:22px;color:var(--fg)}
+.st{flex:1;min-width:0}
+.st b{display:block;font-size:16px}
+.st small{color:var(--muted)}
+.tick{width:30px;height:30px;flex:none;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-weight:900}
+.done .tick{background:var(--ok);border-color:var(--ok);color:#10200a}
+.done .st b{color:var(--muted);text-decoration:line-through}
+.sb{padding:0 14px 14px 70px}
+.sb ol{margin:0 0 12px;padding-left:18px}
+.sb li{margin:3px 0}
+.tag{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--sig)}
+.opt{opacity:.75}
+
+/* Tests */
+.tgrid{display:flex;justify-content:space-between;gap:10px}
+.tgrid b{font-family:var(--display);font-size:28px;font-variant-numeric:tabular-nums}
+.ok{color:var(--ok)}
+svg.spark{width:100%;height:46px;display:block;margin-top:8px}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);display:flex;padding:6px max(8px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 6px) max(8px,env(safe-area-inset-left));z-index:10}
+.tabs button{flex:1;padding:10px 4px;border-radius:10px;font-weight:700;font-size:13px;color:var(--muted);background:transparent}
+.tabs button.on{color:var(--fg);background:var(--panel2)}
+ul.focus{margin:6px 0 0;padding-left:18px}
+.warn{border-color:#5a4423;background:#211a10}
+.toast{position:fixed;top:calc(env(safe-area-inset-top) + 14px);left:50%;transform:translateX(-50%);background:var(--ok);color:#10200a;font-weight:700;padding:8px 16px;border-radius:99px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+.toast.on{opacity:1}
+@media (max-width:380px){ .units{grid-template-columns:1fr} h1{font-size:38px} }
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<div class="wrap" id="app"></div>
+<nav class="tabs" id="tabs" hidden>
+  <button data-tab="prog" class="on">Programme</button>
+  <button data-tab="tests">Tests</button>
+  <button data-tab="gib">Gibbush</button>
+</nav>
+
+<script>
+"use strict";
+// ================= Données des unités =================
+// tier : 1 élite, 2 brigade / génie, 3 bataillons mixtes et autres corps
+// p : poids de l'entraînement (0 à 3) — end endurance, spd vitesse, str force, carry port de charge, swim natation
+const UNITS = [
+  {id:"matkal",  n:"Sayeret Matkal", h:"סיירת מטכ\"ל", cat:"Unités d'élite", tier:1, p:{end:3,spd:3,str:2,carry:3,swim:0},
+   d:"Unité de reconnaissance de l'état-major.", f:["Endurance sur la durée et répétition des efforts","Sprints avec sacs de sable","Résistance mentale quand tu es épuisé","Travail d'équipe et calme sous la pression"]},
+  {id:"s13",     n:"Shayetet 13", h:"שייטת 13", cat:"Unités d'élite", tier:1, p:{end:3,spd:2,str:2,carry:2,swim:3},
+   d:"Commando marine.", f:["Natation : aisance et endurance dans l'eau","Course et efforts répétés","Résistance au froid et à la fatigue","Mental : ne jamais abandonner"]},
+  {id:"shaldag", n:"Shaldag", h:"שלדג", cat:"Unités d'élite", tier:1, p:{end:3,spd:3,str:2,carry:3,swim:0},
+   d:"Unité commando de l'armée de l'air.", f:["Endurance et sprints","Port de charge lourde","Résistance mentale","Travail en équipe"]},
+  {id:"669",     n:"Unité 669", h:"יחידה 669", cat:"Unités d'élite", tier:1, p:{end:3,spd:2,str:2,carry:3,swim:1},
+   d:"Unité de sauvetage et d'évacuation de l'armée de l'air.", f:["Port de brancard et de blessé","Endurance longue","Calme et précision sous la fatigue"]},
+  {id:"duvdevan",n:"Duvdevan", h:"דובדבן", cat:"Unités d'élite", tier:1, p:{end:3,spd:3,str:2,carry:2,swim:0},
+   d:"Unité commando spécialisée dans les opérations sous couverture.", f:["Sprints et explosivité","Endurance","Lucidité sous la pression"]},
+  {id:"maglan",  n:"Maglan", h:"מגלן", cat:"Unités d'élite", tier:1, p:{end:3,spd:2,str:2,carry:3,swim:0},
+   d:"Unité commando d'opérations en profondeur.", f:["Marches longues avec sac lourd","Endurance","Mental"]},
+  {id:"egoz",    n:"Egoz", h:"אגוז", cat:"Unités d'élite", tier:1, p:{end:3,spd:2,str:2,carry:3,swim:0},
+   d:"Unité commando spécialisée en terrain difficile.", f:["Marches en terrain accidenté avec charge","Sprints","Mental et cohésion"]},
+  {id:"yahalom", n:"Yahalom", h:"יהל\"ם", cat:"Unités d'élite", tier:1, p:{end:2,spd:2,str:3,carry:3,swim:0},
+   d:"Unité d'élite du génie de combat.", f:["Force et port de charge","Endurance","Calme et précision"]},
+  {id:"oketz",   n:"Oketz", h:"עוקץ", cat:"Unités d'élite", tier:1, p:{end:3,spd:2,str:2,carry:2,swim:0},
+   d:"Unité cynophile (avec des chiens).", f:["Endurance de course","Port de charge","Patience et sang-froid"]},
+
+  {id:"golani",  n:"Golani", h:"גולני", cat:"Brigades d'infanterie", tier:2, p:{end:2,spd:2,str:2,carry:3,swim:0},
+   d:"Brigade d'infanterie, béret marron.", f:["Port de charge et marches","Sprints courts","Esprit d'équipe"]},
+  {id:"givati",  n:"Givati", h:"גבעתי", cat:"Brigades d'infanterie", tier:2, p:{end:2,spd:2,str:2,carry:3,swim:0},
+   d:"Brigade d'infanterie, béret violet.", f:["Port de charge et marches","Endurance","Esprit d'équipe"]},
+  {id:"tsanhanim",n:"Tsanhanim", h:"צנחנים", cat:"Brigades d'infanterie", tier:2, p:{end:3,spd:2,str:2,carry:3,swim:0},
+   d:"Brigade parachutiste, béret rouge.", f:["Endurance","Port de charge","Mental"]},
+  {id:"nahal",   n:"Nahal", h:"נח\"ל", cat:"Brigades d'infanterie", tier:2, p:{end:2,spd:2,str:2,carry:3,swim:0},
+   d:"Brigade d'infanterie, béret vert clair.", f:["Marches avec charge","Endurance","Esprit d'équipe"]},
+  {id:"kfir",    n:"Kfir", h:"כפיר", cat:"Brigades d'infanterie", tier:2, p:{end:2,spd:2,str:2,carry:3,swim:0},
+   d:"Brigade d'infanterie, béret camouflage.", f:["Marches avec charge","Endurance","Esprit d'équipe"]},
+
+  {id:"karakal", n:"Karakal", h:"קרקל", cat:"Bataillons mixtes", tier:3, p:{end:2,spd:2,str:2,carry:2,swim:0},
+   d:"Bataillon mixte (filles et garçons) de défense des frontières.", f:["Endurance","Port de charge","Esprit d'équipe"]},
+  {id:"bardelas",n:"Bardelas", h:"ברדלס", cat:"Bataillons mixtes", tier:3, p:{end:2,spd:2,str:2,carry:2,swim:0},
+   d:"Bataillon mixte de défense des frontières.", f:["Endurance","Port de charge","Esprit d'équipe"]},
+  {id:"arayot",  n:"Arayot HaYarden", h:"אריות הירדן", cat:"Bataillons mixtes", tier:3, p:{end:2,spd:2,str:2,carry:2,swim:0},
+   d:"Bataillon mixte de défense des frontières.", f:["Endurance","Port de charge","Esprit d'équipe"]},
+
+  {id:"handasa", n:"Génie de combat", h:"הנדסה קרבית", cat:"Autres corps combattants", tier:2, p:{end:2,spd:1,str:3,carry:3,swim:0},
+   d:"Génie de combat : ouverture de passages, explosifs.", f:["Force et port de matériel lourd","Endurance","Travail d'équipe"]},
+  {id:"shiryon", n:"Blindés", h:"שריון", cat:"Autres corps combattants", tier:3, p:{end:1,spd:1,str:3,carry:2,swim:0},
+   d:"Corps blindé : les chars.", f:["Force du haut du corps (obus, chenilles)","Gainage et dos solide","Endurance de base"]},
+  {id:"totchanim",n:"Artillerie", h:"תותחנים", cat:"Autres corps combattants", tier:3, p:{end:1,spd:1,str:3,carry:2,swim:0},
+   d:"Corps d'artillerie.", f:["Force et port d'obus","Gainage","Endurance de base"]},
+];
+// Objectifs indicatifs par tier : [_, élite, brigade, autres]
+const TESTS = [
+  {id:"run2k",   n:"2 km chrono",          time:true, lower:true, t:[0,450,495,570]},
+  {id:"pushups", n:"Pompes en 2 min",      t:[0,70,55,40]},
+  {id:"situps",  n:"Abdos en 2 min",       t:[0,80,65,50]},
+  {id:"pullups", n:"Tractions (max)",      t:[0,16,10,5]},
+  {id:"swim500", n:"500 m nage libre",     time:true, lower:true, t:[0,600,720,720], swimOnly:true},
+];
+const DAYS = ["Dim","Lun","Mar","Mer","Jeu","Ven"];
+const DAY = 864e5;
+
+// ================= État =================
+const KEY = "tsav.v1";
+let S = null;
+try { S = JSON.parse(localStorage.getItem(KEY) || "null"); } catch(e){}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+let draft = { step:0, unit:null, run:"", push:"", date:"" };
+let tab = "prog", viewWeek = null;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+const unitOf = id => UNITS.find(u => u.id === id);
+const mmss = s => Math.floor(s/60)+":"+String(Math.round(s%60)).padStart(2,"0");
+function parseTime(v){ const m = String(v).trim().match(/^(\d{1,2})[:.,h'](\d{2})$/); return m ? +m[1]*60 + +m[2] : null; }
+function toast(t){ const e=$("toast"); e.textContent=t; e.classList.add("on"); clearTimeout(toast.t); toast.t=setTimeout(()=>e.classList.remove("on"),1500); }
+
+// ================= Générateur de programme =================
+function levelFrom(run, push){
+  const parts = [];
+  const r = parseTime(run); if (r) parts.push(r < 510 ? 2 : r < 600 ? 1 : 0);
+  const p = parseInt(push, 10); if (p >= 0) parts.push(p >= 45 ? 2 : p >= 25 ? 1 : 0);
+  if (!parts.length) return 0;
+  return Math.round(parts.reduce((a,b)=>a+b,0)/parts.length);
+}
+function weeksFor(dateStr){
+  if (!dateStr) return 12;
+  const w = Math.floor((new Date(dateStr+"T08:00") - Date.now())/(7*DAY));
+  return Math.max(4, Math.min(16, w));
+}
+
+function phaseOf(w, N){
+  if (w === N) return "taper";
+  if (w % 4 === 0) return "light";
+  return "build";
+}
+
+// Renvoie les 6 séances (dim → ven) de la semaine w
+function week(w){
+  const u = unitOf(S.unit), N = S.weeks, L = S.level, p = u.p, tier = u.tier;
+  const ph = phaseOf(w, N);
+  const k = ph === "taper" ? .5 : ph === "light" ? .7 : 1;
+  const f = N > 1 ? (w-1)/(N-1) : 1;                  // progression 0 → 1
+  const lerp = (a, b) => a + (b-a)*f;
+  const n = (a, b, min=1) => Math.max(min, Math.round(lerp(a, b) * k));
+  const kg = Math.round(([6,10,14][L] + (tier === 1 ? 4 : 0) + (p.carry === 3 ? 2 : 0)) * (ph === "taper" ? .6 : 1));
+
+  const intervals = () => {
+    const len = p.spd >= 3 ? 200 : 400;
+    const reps = n([4,6,8][L] + (p.spd>=3?2:0), [8,10,12][L] + (p.spd>=3?2:0));
+    return { t:"Fractionné", m:45, tag:"Vitesse", items:[
+      "Échauffement : 10 min de footing lent, puis montées de genoux, talons-fesses et 3 accélérations",
+      reps+" × "+len+" m vite (85 % de ton max). Récupération : "+(len===200?"60":"90")+" s en marchant",
+      "Retour au calme : 5 min de marche et étirements des mollets et des cuisses"]};
+  };
+  const strength = (heavy) => {
+    const sets = Math.min(5, 3 + Math.floor(f*2.5));
+    const pull = [ n(3,6)+" tractions négatives (descends lentement en 5 s)", n(3,10)+" tractions", n(8,18)+" tractions" ][L];
+    const it = [ sets+" tours de :", n([10,18,25][L],[25,40,55][L])+" pompes", pull,
+      n([15,25,35][L],[35,50,65][L])+" abdos", n([15,25,30][L],[35,45,60][L])+" squats",
+      "Gainage "+n([30,45,60][L],[60,90,120][L])+" s", "Repos 90 s entre les tours" ];
+    if (heavy || p.str >= 3) it.splice(6, 0, "4 × 40 m de marche en portant deux jerricans ou deux sacs lourds (un dans chaque main)");
+    return { t: heavy ? "Force et port de charge" : "Force au poids du corps", m:50, tag:"Force", items:it };
+  };
+  const longRun = () => {
+    const km = Math.round(lerp([3,4,5][L], [5,7,9][L] + (p.end===3?2:0)) * k * 2) / 2;
+    return { t:"Course longue", m: Math.round(km*6.5), tag:"Endurance", items:[
+      km+" km à allure facile : tu dois pouvoir parler en courant",
+      "Sur la dernière minute, accélère pour finir fort",
+      "Bois avant de partir. En été, cours avant 8 h"]};
+  };
+  const tempo = () => {
+    const km = Math.max(1.5, Math.round(lerp([1.5,2,3][L], [3,4,5][L]) * k * 2) / 2);
+    return { t:"Course tempo", m:35, tag:"Endurance", items:[
+      "Échauffement : 1 km lent",
+      km+" km à allure soutenue et régulière, un peu plus lent que ton 2 km chrono",
+      "Retour au calme : 5 min de marche"]};
+  };
+  const gibbushSim = () => {
+    const sk = p.carry >= 3 ? [10,15,20][L] : [8,10,15][L];
+    return { t:"Simulation gibbush", m:50, tag:"Spécial gibbush", items:[
+      n([6,8,10][L],[10,14,16][L])+" sprints de 50 m, départ couché au sol (tu te lèves et tu pars au signal)",
+      n(3,6)+" × 30 m de sprint en portant un sac de sable ou un sac à dos de "+sk+" kg",
+      n(3,6)+" × 20 m de marche de l'ours (à quatre pattes, genoux décollés)",
+      n(2,5)+" × 15 m de reptation (ramper à plat ventre, en avançant avec les coudes)",
+      n([10,15,20][L],[20,30,40][L])+" burpees sans t'arrêter",
+      "À faire à deux si tu peux : 4 × 30 m en portant ton partenaire sur le dos",
+      "Règle d'or : même vidé, tu ne t'arrêtes pas. Ralentis s'il le faut, mais continue"]};
+  };
+  const ruck = () => ({ t:"Marche avec sac", m:n(30,75), tag:"Port de charge", items:[
+      n(30,75)+" min de marche rapide avec un sac à dos de "+kg+" kg (bouteilles d'eau, livres ou sable bien calés)",
+      "Si possible en montée ou sur terrain irrégulier",
+      "Chaussures déjà faites et chaussettes sèches : protège tes pieds des ampoules"]});
+  const swim = (hard) => {
+    const reps = n([4,6,8][L],[8,12,16][L]);
+    return { t: hard ? "Natation : fractionné" : "Natation : endurance", m:50, tag:"Natation", items: hard ? [
+      "Échauffement : 200 m tranquilles",
+      reps+" × 50 m crawl rapide, 20 s de repos entre chaque",
+      "4 × 25 m en apnée partielle : 1 respiration tous les 5 mouvements",
+      "Retour au calme : 100 m dos"] : [
+      "Échauffement : 200 m tranquilles",
+      n([300,500,800][L],[800,1200,1500][L])+" m de crawl en continu, à allure régulière",
+      "4 × 50 m de jambes seules avec une planche",
+      "Retour au calme : 100 m"]};
+  };
+  const mobility = () => ({ t:"Mobilité et récupération", m:20, tag:"Facultatif", opt:true, items:[
+      "20 min d'étirements : hanches, ischios, mollets, épaules",
+      "Rouleau de massage ou balle de tennis sous les pieds et les mollets",
+      "Dors au moins 8 h cette nuit : c'est là que tu progresses"]});
+  const mini = () => ({ t:"Mini-gibbush à la maison", m:75, tag:"Test de résistance", items:[
+      "Échauffement : 10 min",
+      "Enchaîne sans pause : 1 km rapide, 20 burpees, 3 × 30 m de sprint avec sac, 20 m de reptation, 1 km rapide",
+      "2 min de repos, puis recommence. "+(L===0?"2":L===1?"3":"4")+" tours au total",
+      "Demande à un ami de te donner les ordres en criant et sans prévenir, comme au gibbush",
+      "Note comment tu te sens à la fin : c'est un entraînement du mental"]});
+  const taperDay = () => ({ t:"Repos actif", m:20, tag:"Avant le gibbush", items:[
+      "15 min de footing très lent et quelques étirements, pas plus",
+      "Prépare tes affaires, mange normalement, bois beaucoup",
+      "Couche-toi tôt. Tu es prêt : maintenant on récupère"]});
+
+  let days;
+  if (p.swim >= 2)      days = [intervals(), swim(false), strength(), gibbushSim(), longRun(), swim(true)];
+  else if (p.str >= 3 && p.end <= 1) days = [intervals(), strength(true), tempo(), gibbushSim(), strength(true), mobility()];
+  else                  days = [intervals(), strength(), longRun(), gibbushSim(), (p.carry>=3 && w%2) ? ruck() : tempo(), mobility()];
+  if (p.carry >= 3 && p.end >= 3 && w%2 === 0 && ph === "build") days[5] = ruck();   // élite : marche en plus
+  if (ph === "light") days[4] = mini();
+  if (ph === "taper"){ days[3] = mini(); days[3].t = "Dernière simulation, en douceur"; days[3].items = days[3].items.slice(0,2).concat("Un seul tour, à 70 % : tu gardes la fraîcheur"); days[4] = taperDay(); days[5] = mobility(); }
+  return days;
+}
+
+// ================= Écrans =================
+function render(){
+  $("tabs").hidden = !S;
+  if (!S) return renderSetup();
+  if (tab === "prog") renderProg();
+  else if (tab === "tests") renderTests();
+  else renderGib();
+  document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
+}
+
+function renderSetup(){
+  const st = draft.step;
+  let h = '<div class="eyebrow">Prépa gibbush et giyous</div><h1>Tsav</h1>'
+    + '<div class="steps">' + [0,1,2].map(i => '<i class="'+(i<=st?"on":"")+'"></i>').join("") + '</div>';
+  if (st === 0){
+    h += '<h2 style="margin-top:0">Quelle unité tu vises ?</h2><p class="muted">Ton programme dépend de ce choix : natation pour la Shayetet, port de charge pour l\'infanterie, force pour les blindés…</p>';
+    let cat = "";
+    UNITS.forEach(u => {
+      if (u.cat !== cat){ if (cat) h += "</div>"; cat = u.cat; h += '<div class="eyebrow cat">'+esc(cat)+'</div><div class="units">'; }
+      h += '<button class="unit'+(draft.unit===u.id?" sel":"")+'" data-unit="'+u.id+'"><b>'+esc(u.n)+'</b><span class="heb" dir="rtl">'+esc(u.h)+'</span><small>'+esc(u.d)+'</small></button>';
+    });
+    h += '</div><div style="height:16px"></div><button class="btn" id="next" '+(draft.unit?"":"disabled")+'>Continuer</button>';
+  } else if (st === 1){
+    h += '<h2 style="margin-top:0">Ton niveau aujourd\'hui</h2><p class="muted">Sois honnête : le programme part de là où tu en es. Si tu ne sais pas, laisse vide et on commence doucement.</p>'
+      + '<label for="run">Ton temps sur 2 km (minutes:secondes)</label><input id="run" inputmode="numeric" placeholder="Ex. 9:30" value="'+esc(draft.run)+'">'
+      + '<label for="push">Pompes d\'affilée, sans t\'arrêter</label><input id="push" inputmode="numeric" placeholder="Ex. 25" value="'+esc(draft.push)+'">'
+      + '<div style="height:18px"></div><div class="row"><button class="btn2" id="back">Retour</button><button class="btn" id="next">Continuer</button></div>';
+  } else {
+    h += '<h2 style="margin-top:0">Quand est ton gibbush ?</h2><p class="muted">Le programme dure entre 4 et 16 semaines et se cale sur cette date. La dernière semaine est allégée pour que tu arrives frais.</p>'
+      + '<label for="date">Date du gibbush (ou du giyous)</label><input id="date" type="date" value="'+esc(draft.date)+'">'
+      + '<p class="muted" id="wk"></p>'
+      + '<div class="row"><button class="btn2" id="back">Retour</button><button class="btn" id="next">Créer mon programme</button></div>';
+  }
+  $("app").innerHTML = h;
+  document.querySelectorAll("[data-unit]").forEach(b => b.onclick = () => { draft.unit = b.dataset.unit; renderSetup(); });
+  const back = $("back"); if (back) back.onclick = () => { draft.step--; renderSetup(); };
+  if (st === 1){ $("run").oninput = e => draft.run = e.target.value; $("push").oninput = e => draft.push = e.target.value; }
+  if (st === 2){
+    const upd = () => { const w = weeksFor(draft.date); $("wk").textContent = draft.date ? "Ton programme : "+w+" semaines." : "Pas encore de date ? On part sur 12 semaines."; };
+    $("date").oninput = e => { draft.date = e.target.value; upd(); }; upd();
+  }
+  $("next").onclick = () => {
+    if (st < 2){ draft.step++; renderSetup(); window.scrollTo(0,0); return; }
+    S = { unit:draft.unit, level:levelFrom(draft.run, draft.push), weeks:weeksFor(draft.date), gibDate:draft.date || null,
+          start:Date.now(), done:{}, tests:[] };
+    const r = parseTime(draft.run), p = parseInt(draft.push,10);
+    if (r) S.tests.push({id:"run2k", v:r, d:Date.now()});
+    if (p > 0) S.tests.push({id:"pushups", v:p, d:Date.now()});
+    save(); tab = "prog"; viewWeek = null; render(); window.scrollTo(0,0);
+  };
+}
+
+function curWeek(){ return Math.max(1, Math.min(S.weeks, Math.floor((Date.now() - S.start)/(7*DAY)) + 1)); }
+
+function heroHTML(){
+  const u = unitOf(S.unit);
+  let cnt;
+  if (S.gibDate){
+    const d = Math.ceil((new Date(S.gibDate+"T08:00") - Date.now())/DAY);
+    cnt = d > 0 ? '<b>J-'+d+'</b><small>avant le gibbush</small>' : '<b>GO</b><small>c\'est le moment</small>';
+  } else cnt = '<b>S'+curWeek()+'</b><small>sur '+S.weeks+' semaines</small>';
+  return '<div class="hero"><div><div class="eyebrow">Objectif · niveau '+["débutant","intermédiaire","avancé"][S.level]+'</div><h1>'+esc(u.n)+'</h1><div class="heb" dir="rtl" style="color:var(--sand)">'+esc(u.h)+'</div></div><div class="count">'+cnt+'</div></div>';
+}
+
+function renderProg(){
+  if (viewWeek === null) viewWeek = curWeek();
+  const w = viewWeek, ph = phaseOf(w, S.weeks), days = week(w);
+  const total = S.weeks*5, done = Object.keys(S.done).filter(k => !k.endsWith("d5")).length;
+  const label = {build:"Progression", light:"Semaine allégée + mini-gibbush", taper:"Affûtage avant le gibbush"}[ph];
+  let h = heroHTML()
+    + '<div class="card"><div class="row between"><button class="btn2" id="prev" aria-label="Semaine précédente">‹</button><div style="text-align:center"><h3>Semaine '+w+' / '+S.weeks+'</h3><span class="phase '+ph+'">'+label+'</span></div><button class="btn2" id="nxt" aria-label="Semaine suivante">›</button></div>'
+    + '<div class="bar"><i style="width:'+Math.min(100,Math.round(done/total*100))+'%"></i></div><div class="muted">'+done+' séances faites sur '+total+(w===curWeek()?" · semaine en cours":"")+'</div></div>';
+  days.forEach((s, i) => {
+    const key = "w"+w+"d"+i, ok = !!S.done[key];
+    h += '<details class="card'+(ok?" done":"")+(s.opt?" opt":"")+'"><summary><div class="day">'+DAYS[i]+'</div><div class="st"><span class="tag">'+esc(s.tag)+'</span><b>'+esc(s.t)+'</b><small>~'+s.m+' min</small></div><div class="tick">'+(ok?"✓":"")+'</div></summary>'
+      + '<div class="sb"><ol>'+s.items.map(x => '<li>'+esc(x)+'</li>').join("")+'</ol><button class="btn2" data-done="'+key+'">'+(ok?"Annuler":"Séance faite ✓")+'</button></div></details>';
+  });
+  h += '<p class="muted">Vendredi est facultatif. Shabbat : repos complet.</p>';
+  $("app").innerHTML = h;
+  $("prev").onclick = () => { viewWeek = Math.max(1, w-1); renderProg(); };
+  $("nxt").onclick = () => { viewWeek = Math.min(S.weeks, w+1); renderProg(); };
+  document.querySelectorAll("[data-done]").forEach(b => b.onclick = () => {
+    const k = b.dataset.done;
+    if (S.done[k]) delete S.done[k]; else { S.done[k] = Date.now(); toast("Séance validée"); try{navigator.vibrate&&navigator.vibrate(40);}catch(e){} }
+    save(); renderProg();
+    const d = document.querySelector('[data-done="'+k+'"]'); if (d) d.closest("details").open = true;
+  });
+}
+
+function spark(vals, lower){
+  if (vals.length < 2) return "";
+  const W=300, H=46, pad=5, mn=Math.min(...vals), mx=Math.max(...vals), span=(mx-mn)||1;
+  const pts = vals.map((v,i)=>{ const x=pad+i*(W-2*pad)/(vals.length-1); let y=(v-mn)/span; if(!lower) y=1-y; return [x, pad+y*(H-2*pad)]; });
+  const line = pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ");
+  const last = pts[pts.length-1];
+  return '<svg class="spark" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" aria-hidden="true"><polyline points="'+line+'" fill="none" stroke="var(--sand)" stroke-width="2" vector-effect="non-scaling-stroke"/><circle cx="'+last[0]+'" cy="'+last[1]+'" r="4" fill="var(--sig)"/></svg>';
+}
+
+function renderTests(){
+  const u = unitOf(S.unit);
+  let h = heroHTML() + '<h2>Tests</h2><p class="muted">Refais-les pendant les semaines allégées. Objectifs indicatifs pour '+esc(u.n)+' : ce ne sont pas des barèmes officiels de Tsahal.</p>';
+  TESTS.filter(t => !t.swimOnly || u.p.swim >= 1).forEach(t => {
+    const vals = S.tests.filter(x => x.id === t.id).map(x => x.v);
+    const best = vals.length ? (t.lower ? Math.min(...vals) : Math.max(...vals)) : null;
+    const goal = t.t[u.tier], ok = best !== null && (t.lower ? best <= goal : best >= goal);
+    const fmt = v => t.time ? mmss(v) : v;
+    h += '<div class="card"><div class="tgrid"><div><div class="eyebrow">'+esc(t.n)+'</div><b>'+(best===null?"–":fmt(best))+'</b><div class="muted">record</div></div>'
+      + '<div style="text-align:right"><div class="eyebrow">Objectif</div><b class="'+(ok?"ok":"")+'">'+fmt(goal)+'</b><div class="muted">'+(ok?"atteint ✓":best===null?"à tester":(t.lower?"encore "+mmss(best-goal):"encore "+(goal-best)+" rép."))+'</div></div></div>'
+      + spark(vals, t.lower)
+      + '<div class="row" style="margin-top:10px"><input id="in-'+t.id+'" inputmode="numeric" placeholder="'+(t.time?"Temps, ex. 8:45":"Répétitions, ex. 42")+'" aria-label="'+esc(t.n)+'"><button class="btn2" data-add="'+t.id+'">Noter</button></div></div>';
+  });
+  $("app").innerHTML = h;
+  document.querySelectorAll("[data-add]").forEach(b => b.onclick = () => {
+    const t = TESTS.find(x => x.id === b.dataset.add), inp = $("in-"+t.id);
+    const v = t.time ? parseTime(inp.value) : (/^\d{1,3}$/.test(inp.value.trim()) ? +inp.value : null);
+    if (!v){ inp.value=""; inp.placeholder = t.time ? "Format minutes:secondes, ex. 8:45" : "Écris un nombre, ex. 42"; inp.focus(); return; }
+    S.tests.push({id:t.id, v, d:Date.now()}); save(); toast("Résultat noté"); renderTests();
+  });
+}
+
+function renderGib(){
+  const u = unitOf(S.unit);
+  let h = heroHTML()
+    + '<h2>Ce que ton programme travaille</h2><div class="card"><b>'+esc(u.n)+'</b> — '+esc(u.d)+'<ul class="focus">'+u.f.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul></div>'
+    + '<h2>Le jour du gibbush</h2>'
+    + '<div class="card"><b>Ce qu\'on regarde vraiment</b><ul class="focus"><li>Tu continues quand tu es à bout. Abandonner compte bien plus qu\'arriver dernier.</li><li>Tu aides les autres, même quand personne ne te regarde.</li><li>Tu écoutes les consignes et tu les exécutes vite et bien.</li><li>Tu restes calme et tu ne te plains pas.</li></ul></div>'
+    + '<div class="card"><b>La veille et le matin</b><ul class="focus"><li>Dors tôt les 3 nuits d\'avant, pas seulement la veille.</li><li>Mange comme d\'habitude : pas de nouveauté le jour J.</li><li>Bois régulièrement dès la veille.</li><li>Chaussures de course déjà rodées, chaussettes de rechange.</li></ul></div>'
+    + '<div class="card warn"><b>Sécurité</b><ul class="focus"><li>En été, entraîne-toi avant 8 h ou après 18 h. La chaleur en Israël peut provoquer un coup de chaleur.</li><li>Au moins 1 L d\'eau par heure d\'effort.</li><li>Douleur vive, vertige ou nausée : arrête-toi. Si une douleur dure plus de 3 jours, va voir un médecin.</li><li>Pour une unité combattante, il faut un profil médical compatible : vérifie celui qu\'exige ton unité.</li></ul></div>'
+    + '<p class="muted">Tsav n\'est pas une application officielle de Tsahal. Pour les dates, les conditions d\'entrée et les barèmes, la référence est ta lishkat giyous.</p>'
+    + '<h2>Réglages</h2><div class="card"><p class="muted" style="margin-top:0">Changer d\'unité ou de date recrée le programme. Tes résultats de tests sont gardés.</p><button class="btn2" id="reset">Changer d\'unité ou de date</button><div id="confirm" hidden style="margin-top:10px"><p>Ton programme actuel et les séances cochées seront remplacés.</p><div class="row"><button class="btn2" id="no">Annuler</button><button class="btn" id="yes">Oui, recommencer</button></div></div></div>';
+  $("app").innerHTML = h;
+  $("reset").onclick = () => { $("confirm").hidden = false; };
+  $("no").onclick = () => { $("confirm").hidden = true; };
+  $("yes").onclick = () => {
+    keptTests = S.tests; draft = { step:0, unit:S.unit, run:"", push:"", date:S.gibDate || "" }; S = null; save(); render(); window.scrollTo(0,0);
+  };
+}
+let keptTests = null;
+// Récupère les tests après une recréation du programme
+const _save = save;
+save = function(){ if (S && keptTests){ S.tests = keptTests.concat(S.tests); keptTests = null; } _save(); };
+
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); window.scrollTo(0,0); });
+render();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
