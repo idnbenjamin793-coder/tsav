@@ -113,7 +113,7 @@ const UNITS = [
    d:"Commando marine.", f:["Natation : aisance et endurance dans l'eau","Course et efforts répétés","Résistance au froid et à la fatigue","Mental : ne jamais abandonner"]},
   {id:"shaldag", n:"Shaldag", h:"שלדג", cat:"Unités d'élite", tier:1, p:{end:3,spd:3,str:2,carry:3,swim:0},
    d:"Unité commando de l'armée de l'air.", f:["Endurance et sprints","Port de charge lourde","Résistance mentale","Travail en équipe"]},
-  {id:"669",     n:"Unité 669", h:"יחידה 669", cat:"Unités d'élite", tier:1, p:{end:3,spd:2,str:2,carry:3,swim:1},
+  {id:"669",     n:"Unité 669", h:"יחידה 669", cat:"Unités d'élite", tier:1, p:{end:3,spd:2,str:2,carry:3,swim:2},
    d:"Unité de sauvetage et d'évacuation de l'armée de l'air.", f:["Port de brancard et de blessé","Endurance longue","Calme et précision sous la fatigue"]},
   {id:"duvdevan",n:"Duvdevan", h:"דובדבן", cat:"Unités d'élite", tier:1, p:{end:3,spd:3,str:2,carry:2,swim:0},
    d:"Unité commando spécialisée dans les opérations sous couverture.", f:["Sprints et explosivité","Endurance","Lucidité sous la pression"]},
@@ -151,14 +151,64 @@ const UNITS = [
   {id:"totchanim",n:"Artillerie", h:"תותחנים", cat:"Autres corps combattants", tier:3, p:{end:1,spd:1,str:3,carry:2,swim:0},
    d:"Corps d'artillerie.", f:["Force et port d'obus","Gainage","Endurance de base"]},
 ];
-// Objectifs indicatifs par tier : [_, élite, brigade, autres]
+// Objectifs indicatifs par tier : [_, élite, brigade, autres]. t:null = aucun barème public trouvé
 const TESTS = [
   {id:"run2k",   n:"2 km chrono",          time:true, lower:true, t:[0,450,495,570]},
+  {id:"run3k",   n:"3 km chrono",          time:true, lower:true, t:[0,900,900,900], only:["tsanhanim"], note:"Course de tri citée par des sites de prépa : moins de 15 min"},
   {id:"pushups", n:"Pompes en 2 min",      t:[0,70,55,40]},
   {id:"situps",  n:"Abdos en 2 min",       t:[0,80,65,50]},
   {id:"pullups", n:"Tractions (max)",      t:[0,16,10,5]},
-  {id:"swim500", n:"500 m nage libre",     time:true, lower:true, t:[0,600,720,720], swimOnly:true},
+  {id:"swim400", n:"400 m nage libre",     time:true, lower:true, t:null, only:["s13","669"], note:"Distance citée pour le gibbush Shayetet. Pas de temps officiel publié : bats ton propre record"},
 ];
+
+// Parcours vérifié par unité (recherche du 22/11/2026). conf : "off" source officielle Tsahal, "prep" sites de prépa / presse, "low" très peu d'infos publiques
+const S_YS = ["Tsahal (mitgaisim) : tout sur le Yom Sayarot, 2026", "https://www.mitgaisim.idf.il/כתבות/ראשי/כל-מה-שצריך-לדעת-על-יום-הסיירות/"];
+const S_GM = ["Xpert Kosher Kravi : gibbush Matkal", "https://kosherkravi.co.il/meet_the_unit/%D7%92%D7%99%D7%91%D7%95%D7%A9-%D7%9E%D7%98%D7%9B%D7%9C/"];
+const S_GM2 = ["Adrenalin : gibbush Matkal", "https://adrenalin-israel.co.il/gibush-matkal/"];
+const S_PROF = ["Wikipedia : profil médical", "https://en.wikipedia.org/wiki/Medical_profile"];
+const GM_ROUTE = ["Yom Sayarot : journée de tri physique et mentale (en octobre de nuit, ou en janvier sur une journée)", "Gibbush Matkal : environ 4 à 5 jours, commun à Sayeret Matkal, Shaldag, 669 et aux unités de la brigade Commando", "Puis tests psychologiques, médicaux et de sécurité"];
+const GM_ACTS = ["Sprints avec sacs de sable", "Alunka sotsiometrit : brancard lesté porté en équipe", "Reptation et creusement d'un trou", "Navigation, lectures et tâches de réflexion, avec peu de sommeil"];
+const INFO = {
+  matkal:  {conf:"off", prof:"97", route:GM_ROUTE, acts:GM_ACTS, src:[S_YS, ["Wikipedia : Sayeret Matkal","https://en.wikipedia.org/wiki/Sayeret_Matkal"], S_GM]},
+  shaldag: {conf:"prep", prof:"97", route:GM_ROUTE.concat("Sayeret Matkal et Shaldag choisissent leurs candidats en premier"), acts:GM_ACTS, src:[S_GM, S_GM2]},
+  "669":   {conf:"prep", prof:"97", route:GM_ROUTE.concat("Une journée piscine en plus (yom breikha) : équipes de 10 en eau profonde"), acts:GM_ACTS.concat("Ouvrir et refermer le brancard spécial 669 en temps limité, sous pression"), src:[["Wikipedia : Unité 669","https://en.wikipedia.org/wiki/Unit_669"], ["Adrenalin : journée piscine 669","https://adrenalin-israel.co.il/pool-day-669-unit/"], S_GM]},
+  maglan:  {conf:"prep", prof:"97", route:["Candidats choisis après le Gibbush Matkal (Yom Sayarot d'abord), par un tirage entre les unités environ une semaine après"], acts:GM_ACTS, src:[S_GM, ["Wikipedia : brigade Oz (Commando)","https://en.wikipedia.org/wiki/Oz_Brigade"]]},
+  duvdevan:{conf:"prep", prof:"97", route:["Via le Gibbush Matkal (Yom Sayarot d'abord)", "Ou via le gibbush des unités spéciales des Tsanhanim, après l'incorporation"], acts:GM_ACTS, src:[S_GM, ["Adrenalin : gibbush Tsanhanim et Duvdevan","https://adrenalin-israel.co.il/tzanhanim-special-unit-gibush/"]]},
+  egoz:    {conf:"prep", prof:"97", route:["Via le Gibbush Matkal (Yom Sayarot d'abord)", "Ou via le gibbush Golani, environ 2 semaines après l'incorporation"], acts:GM_ACTS, src:[S_GM, ["xTrain : gibbush Golani","https://xtrain.co.il/%D7%92%D7%99%D7%91%D7%95%D7%A9-%D7%92%D7%95%D7%9C%D7%A0%D7%99/"]]},
+  s13:     {conf:"prep", prof:"97", route:["Yom Sayarot d'abord (source officielle)", "Gibbush Shayetet : environ 5 jours (4 jours d'épreuves) à la base d'Atlit, deux fois par an (octobre-novembre ou mars-avril)", "Pas besoin de savoir plonger"],
+            acts:["2 000 m de course au début", "Nage jusqu'à une bouée (environ 100 m aller et 100 m retour), nage en groupe", "Temps sous l'eau avec tuba, nage avec un masque noirci", "Environ 400 m de nage vers la fin", "Aussi : courses, brancards, sacs de sable, reptation", "Mémoriser des informations et faire un exposé"],
+            src:[S_YS, ["Mifkada : gibbush Shayetet","https://mifkada.co.il/%D7%92%D7%99%D7%91%D7%95%D7%A9-%D7%A9%D7%99%D7%99%D7%98%D7%AA/"], ["Machon Noam : Shayetet 13","https://www.machon-noam.co.il/%D7%A6%D7%94%D7%9C-%D7%A9%D7%99%D7%99%D7%98%D7%AA-13"]]},
+  yahalom: {conf:"prep", prof:"97 (non confirmé)", route:["Gibbush d'environ 3 jours, 2 à 3 semaines avant les classes", "Selon Tsahal, ceux qui finissent le Yom Sayarot sans le réussir peuvent être orientés vers Yahalom"],
+            acts:["Courses avec des sacs de sable sur les épaules", "Creuser un trou, brancard, reptation", "Démonter et remonter une arme, repérer des mines", "Tâches en équipe et tests théoriques"],
+            src:[S_YS, ["Xpert Kosher Kravi : gibbush Yahalom","https://kosherkravi.co.il/blog_article/%D7%92%D7%99%D7%91%D7%95%D7%A9-%D7%99%D7%94%D7%9C%D7%95%D7%9D/"]]},
+  oketz:   {conf:"prep", prof:"97 (non confirmé)", route:["Gibbush de 3 jours au Mitkan Adam"], acts:["Alunka sotsiometrit (brancard en équipe)", "Reptation", "Épreuves mentales"],
+            src:[["Amazia : gibbush Oketz","https://www.amazia.co.il/gibushim/oketz"]]},
+  golani:  {conf:"prep", prof:"82 minimum", route:["Après l'incorporation, environ la 2e semaine, avant les classes", "Gibbush de 3 jours : il sélectionne pour la Sayeret Golani, les unités de la brigade et Egoz"],
+            acts:["Creuser un trou profond", "Longue reptation sur du kurkar (sol de grès)", "Marche rapide d'environ 4 km avec un brancard", "Sprints et sacs de sable", "3e jour : tu diriges toi-même des tâches de navigation"],
+            src:[["xTrain : gibbush Golani","https://xtrain.co.il/%D7%92%D7%99%D7%91%D7%95%D7%A9-%D7%92%D7%95%D7%9C%D7%A0%D7%99/"], ["Adrenalin : Golani","https://adrenalin-israel.co.il/%D7%92%D7%93%D7%A1%D7%A8-%D7%92%D7%95%D7%9C%D7%A0%D7%99-%D7%90%D7%99%D7%9A-%D7%9E%D7%AA%D7%A7%D7%91%D7%9C%D7%99%D7%9D-%D7%94%D7%9E%D7%93%D7%A8%D7%99%D7%9A-%D7%94%D7%9E%D7%9C%D7%90/"]]},
+  givati:  {conf:"low", prof:"82 minimum", route:["Gibbush pour les unités spéciales de la brigade, après l'incorporation"], acts:["Par deux : aller en rampant, retour en courant", "Soulever un brancard chargé de sacs de sable", "Sprints, squats, pompes"],
+            src:[["Témoignage d'un soldat Givati (2014)","http://israelandotherhigherplaces.blogspot.com/2014/10/the-challenges-begin-gibbush-simulation.html"]]},
+  tsanhanim:{conf:"prep", prof:"82 minimum", route:["Gibbush des unités spéciales après l'incorporation (aussi une porte d'entrée vers Duvdevan)", "Il commence souvent par une course de tri de 3 km, à faire en moins de 15 min"],
+            acts:["Reptation dans des fosses de sable : c'est l'essentiel du gibbush", "Le triangle : ramper, porter un sac, courir", "Tenir un sac au-dessus de la tête (le chrono repart à zéro si un membre de l'équipe le lâche)", "Brancard en équipe, marche à 6 km/h"],
+            src:[["Adrenalin : gibbush Tsanhanim","https://adrenalin-israel.co.il/gibush-tzanhanim/"], ["Amazia : gibbush Tsanhanim","https://www.amazia.co.il/gibushim/tzanhanim"]]},
+  nahal:   {conf:"low", prof:"82 minimum", route:["Pas de source précise trouvée pour le gibbush Nahal", "Les gibbushim de brigade ont en général lieu après l'incorporation"], acts:["Probablement proche des autres brigades : sprints, reptation, brancard, sacs (non confirmé)"],
+            src:[["HaMador : gibbushim de brigade 2026-2027","https://www.hamador.co.il/gibushyahatiyot"]]},
+  kfir:    {conf:"prep", prof:"82 et plus, kaba 49 et plus (à confirmer)", route:["Il faut d'abord être incorporé à la brigade Kfir", "Test Bar-Or (2 km, pompes, abdos) à la base, puis suite au Mitkan Adam", "Sélectionne pour les sayarot Haruv et Lotar"], acts:["Bar-Or : 2 km de course, pompes et abdos", "Puis épreuves de groupe semblables aux autres gibbushim"],
+            src:[["Xpert Kosher Kravi : gibbush Kfir","https://kosherkravi.co.il/students_posts/%D7%92%D7%99%D7%91%D7%95%D7%A9-%D7%99%D7%97%D7%98%D7%99%D7%95%D7%AA-%D7%9B%D7%A4%D7%99%D7%A8/"], ["Sayarut : Sayeret Haruv","https://sayarut.co.il/%D7%A1%D7%99%D7%99%D7%A8%D7%AA-%D7%97%D7%A8%D7%95%D7%91/"]]},
+  karakal: {conf:"low", prof:"Profil combat (à vérifier)", route:["Pour les filles : 2 jours d'examens mentaux et d'épreuves physiques avant d'entrer (description de Tsahal, ancienne)", "Tsahal annonce les mêmes exigences que dans les bataillons masculins"], acts:["Épreuves physiques et mentales (détails non publiés)"],
+            src:[["Wikipedia : bataillon Caracal","https://en.wikipedia.org/wiki/Caracal_Battalion"], ["Garin Mahal : Caracal","https://garinmahal.com/caracal"]]},
+  bardelas:{conf:"low", prof:"Profil combat (à vérifier)", route:["Aucune information publique précise trouvée sur un gibbush Bardelas", "Bataillon mixte créé sur le modèle de Karakal, avec les mêmes exigences annoncées"], acts:["Non publié"],
+            src:[["Arutz 7 : création du bataillon mixte","http://www.israelnationalnews.com/News/News.aspx/185563"]]},
+  arayot:  {conf:"low", prof:"Profil combat (à vérifier)", route:["Aucune information publique précise trouvée sur un gibbush Arayot HaYarden"], acts:["Non publié"],
+            src:[["Arutz 7 : bataillons mixtes","http://www.israelnationalnews.com/News/News.aspx/185563"]]},
+  handasa: {conf:"low", prof:"82 minimum (selon un site d'aide aux soldats seuls)", route:["Pas de source précise trouvée pour un gibbush du génie de combat (hors Yahalom)"], acts:["Non publié"],
+            src:[["Lone Soldier Center : unités de Tsahal","https://lonesoldiercenter.com/?p=18086"]]},
+  shiryon: {conf:"prep", prof:"72 minimum", route:["En général, pas de gibbush pour les postes de combat standard", "Le profil 72 suffit pour le combat, mais pas pour l'infanterie"], acts:["Pas d'épreuves de tri connues. Le programme te prépare au physique du poste et aux classes"],
+            src:[S_PROF, ["Mako : blindés ou artillerie ?","https://www.mako.co.il/pzm-soldiers/best-unit/Article-d6133351c772131006.htm"]]},
+  totchanim:{conf:"prep", prof:"72 minimum", route:["Pas de tri pour certains postes de l'artillerie (site officiel)", "Les unités spéciales de l'artillerie (Moran, Rokhev Shamayim) ont un gibbush d'environ 2 jours"], acts:["Pour les unités spéciales : tests physiques, travail d'équipe, orientation, tests psychotechniques, entretien"],
+            src:[["Machon Noam : artillerie","https://www.machon-noam.co.il/%D7%97%D7%99%D7%9C-%D7%94%D7%AA%D7%95%D7%AA%D7%97%D7%A0%D7%99%D7%9D"], S_PROF]},
+};
+const ELITE_YS = ["matkal","s13","shaldag","669","maglan","duvdevan","egoz"];
 const DAYS = ["Dim","Lun","Mar","Mer","Jeu","Ven"];
 const DAY = 864e5;
 
@@ -239,14 +289,20 @@ function week(w){
   };
   const gibbushSim = () => {
     const sk = p.carry >= 3 ? [10,15,20][L] : [8,10,15][L];
+    if (S.unit === "shiryon" || S.unit === "totchanim") return { t:"Circuit combat", m:45, tag:"Physique du poste", items:[
+      n(4,8)+" × 30 m en portant deux jerricans ou deux sacs lourds",
+      n(3,5)+" × 10 soulevés d'un sac de "+sk+" kg du sol jusqu'à la poitrine, dos bien droit",
+      n(6,10)+" sprints de 50 m",
+      "Gainage : 3 × "+n(30,90)+" s",
+      "Pas de gibbush en général pour ces postes : ici on prépare le corps aux classes et au travail sur le char ou le canon"]};
     return { t:"Simulation gibbush", m:50, tag:"Spécial gibbush", items:[
       n([6,8,10][L],[10,14,16][L])+" sprints de 50 m, départ couché au sol (tu te lèves et tu pars au signal)",
-      n(3,6)+" × 30 m de sprint en portant un sac de sable ou un sac à dos de "+sk+" kg",
+      "Le triangle, "+n(2,5)+" fois : 15 m de reptation, 15 m en portant un sac de "+sk+" kg, 15 m de sprint",
       n(3,6)+" × 20 m de marche de l'ours (à quatre pattes, genoux décollés)",
-      n(2,5)+" × 15 m de reptation (ramper à plat ventre, en avançant avec les coudes)",
-      n([10,15,20][L],[20,30,40][L])+" burpees sans t'arrêter",
-      "À faire à deux si tu peux : 4 × 30 m en portant ton partenaire sur le dos",
-      "Règle d'or : même vidé, tu ne t'arrêtes pas. Ralentis s'il le faut, mais continue"]};
+      "Tenir le sac au-dessus de la tête : "+n(3,5)+" × "+n(20,60)+" s",
+      n([10,15,20][L],[20,30,40][L])+" burpees",
+      "À faire à 4 si tu peux : porter un brancard lesté (ou un ami) sur 4 × 50 m. C'est le cœur des gibbushim",
+      "À l'entraînement, garde un peu de réserve : Tsahal conseille de ne pas aller jusqu'à l'épuisement. Le « je ne lâche rien », c'est pour le jour du gibbush"]};
   };
   const ruck = () => ({ t:"Marche avec sac", m:n(30,75), tag:"Port de charge", items:[
       n(30,75)+" min de marche rapide avec un sac à dos de "+kg+" kg (bouteilles d'eau, livres ou sable bien calés)",
@@ -254,13 +310,16 @@ function week(w){
       "Chaussures déjà faites et chaussettes sèches : protège tes pieds des ampoules"]});
   const swim = (hard) => {
     const reps = n([4,6,8][L],[8,12,16][L]);
-    return { t: hard ? "Natation : fractionné" : "Natation : endurance", m:50, tag:"Natation", items: hard ? [
+    return { t: hard ? "Natation : fractionné et aisance" : "Natation : endurance", m:50, tag:"Natation", items: hard ? [
       "Échauffement : 200 m tranquilles",
       reps+" × 50 m crawl rapide, 20 s de repos entre chaque",
-      "4 × 25 m en apnée partielle : 1 respiration tous les 5 mouvements",
+      "Aller-retour de 100 m sans toucher le bord, comme la nage jusqu'à la bouée du gibbush",
+      "Aisance avec masque et tuba : 4 × 25 m la tête dans l'eau, calmement",
+      "Toujours avec un maître-nageur ou un partenaire qui te surveille. Ne fais jamais d'apnée seul : la perte de connaissance sous l'eau arrive sans prévenir",
       "Retour au calme : 100 m dos"] : [
       "Échauffement : 200 m tranquilles",
       n([300,500,800][L],[800,1200,1500][L])+" m de crawl en continu, à allure régulière",
+      "Une fois par mois : 400 m chrono (distance citée pour le gibbush Shayetet), à noter dans Tests",
       "4 × 50 m de jambes seules avec une planche",
       "Retour au calme : 100 m"]};
   };
@@ -389,14 +448,18 @@ function spark(vals, lower){
 
 function renderTests(){
   const u = unitOf(S.unit);
-  let h = heroHTML() + '<h2>Tests</h2><p class="muted">Refais-les pendant les semaines allégées. Objectifs indicatifs pour '+esc(u.n)+' : ce ne sont pas des barèmes officiels de Tsahal.</p>';
-  TESTS.filter(t => !t.swimOnly || u.p.swim >= 1).forEach(t => {
+  let h = heroHTML() + '<h2>Tests</h2><p class="muted">Refais-les pendant les semaines allégées. Le test de référence de Tsahal s\'appelle le Bar-Or : 2 km de course, pompes et abdos. Tsahal ne publie pas de barème officiel par unité : les objectifs ci-dessous sont des repères tirés de sites de prépa et de témoignages (score maximal cité : moins de 7 min, 75 pompes, 85 abdos). <a href="http://sonicinbeijing.blogspot.com/2009/10/yom-hasayerot.html" target="_blank" rel="noopener" style="color:var(--sand)">Source</a></p>';
+  TESTS.filter(t => !t.only || t.only.includes(u.id)).forEach(t => {
     const vals = S.tests.filter(x => x.id === t.id).map(x => x.v);
     const best = vals.length ? (t.lower ? Math.min(...vals) : Math.max(...vals)) : null;
-    const goal = t.t[u.tier], ok = best !== null && (t.lower ? best <= goal : best >= goal);
+    const goal = t.t ? t.t[u.tier] : null, ok = goal !== null && best !== null && (t.lower ? best <= goal : best >= goal);
     const fmt = v => t.time ? mmss(v) : v;
+    const right = goal === null
+      ? '<b>–</b><div class="muted">pas de barème public</div>'
+      : '<b class="'+(ok?"ok":"")+'">'+fmt(goal)+'</b><div class="muted">'+(ok?"atteint ✓":best===null?"à tester":(t.lower?"encore "+mmss(best-goal):"encore "+(goal-best)+" rép."))+'</div>';
     h += '<div class="card"><div class="tgrid"><div><div class="eyebrow">'+esc(t.n)+'</div><b>'+(best===null?"–":fmt(best))+'</b><div class="muted">record</div></div>'
-      + '<div style="text-align:right"><div class="eyebrow">Objectif</div><b class="'+(ok?"ok":"")+'">'+fmt(goal)+'</b><div class="muted">'+(ok?"atteint ✓":best===null?"à tester":(t.lower?"encore "+mmss(best-goal):"encore "+(goal-best)+" rép."))+'</div></div></div>'
+      + '<div style="text-align:right"><div class="eyebrow">Objectif</div>'+right+'</div></div>'
+      + (t.note ? '<div class="muted" style="margin-top:6px">'+esc(t.note)+'</div>' : '')
       + spark(vals, t.lower)
       + '<div class="row" style="margin-top:10px"><input id="in-'+t.id+'" inputmode="numeric" placeholder="'+(t.time?"Temps, ex. 8:45":"Répétitions, ex. 42")+'" aria-label="'+esc(t.n)+'"><button class="btn2" data-add="'+t.id+'">Noter</button></div></div>';
   });
@@ -410,13 +473,29 @@ function renderTests(){
 }
 
 function renderGib(){
-  const u = unitOf(S.unit);
+  const u = unitOf(S.unit), I = INFO[u.id];
+  const confTxt = {off:"Vérifié avec une source officielle de Tsahal et des sites de prépa", prep:"Vérifié avec des sites de prépa et la presse : pas de page officielle détaillée", low:"Peu d'informations publiques : à confirmer auprès de ta lishkat giyous"}[I.conf];
+  const li = a => '<ul class="focus">'+a.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul>';
   let h = heroHTML()
-    + '<h2>Ce que ton programme travaille</h2><div class="card"><b>'+esc(u.n)+'</b> — '+esc(u.d)+'<ul class="focus">'+u.f.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul></div>'
+    + '<h2>Ton parcours vers '+esc(u.n)+'</h2>'
+    + '<div class="card"><span class="phase '+(I.conf==="low"?"taper":I.conf==="off"?"light":"")+'">'+esc(confTxt)+'</span>'
+    + '<p style="margin:12px 0 0"><b>Les étapes</b></p>'+li(I.route)
+    + '<p style="margin:12px 0 0"><b>Ce qu\'on y fait</b></p>'+li(I.acts)
+    + '<p style="margin:12px 0 0"><b>Profil médical</b> : '+esc(I.prof)+'</p>'
+    + '<p style="margin:12px 0 0"><b>Sources</b></p><ul class="focus">'+I.src.concat(I.prof.startsWith("97")||I.prof.startsWith("82")||I.prof.startsWith("72")?[S_PROF]:[]).filter((s,i,a)=>a.findIndex(x=>x[1]===s[1])===i).map(s=>'<li><a href="'+esc(s[1])+'" target="_blank" rel="noopener" style="color:var(--sand)">'+esc(s[0])+'</a></li>').join("")+'</ul>'
+    + '<p class="muted" style="margin-bottom:0">Recherche faite le 22 novembre 2026. Les formats changent : les détails viennent surtout de sites de prépa et de témoignages.</p></div>';
+  if (ELITE_YS.includes(u.id)) h += '<div class="card"><b>Préparer ton Yom Sayarot (source officielle)</b>'
+    + li(["Questionnaire médical rempli, signé par ton médecin de famille (valable environ 90 jours) et téléchargé dans ton espace personnel sur le site mitgaisim avant la date de la convocation. Sinon, la convocation est annulée",
+          "À emporter : le questionnaire imprimé, 2 t-shirts blancs à manches courtes (obligatoires), des vêtements de sport, des chaussures de sport fermées, une casquette, ta carte d'identité, une bouteille d'eau de 1,5 L à ton nom, des vêtements chauds, une tenue de rechange et un sac de couchage pour la version de nuit",
+          "Les jours d'avant : bois beaucoup, mange équilibré, dors bien. N'arrive pas à jeun",
+          "Blessé ou malade : envoie un certificat médical et demande un report",
+          "Les résultats arrivent en général le soir après le tri"])
+    + '<a href="'+esc(S_YS[1])+'" target="_blank" rel="noopener" style="color:var(--sand)">Lire l\'article officiel</a></div>';
+  h += '<h2>Ce que ton programme travaille</h2><div class="card"><b>'+esc(u.n)+'</b> — '+esc(u.d)+li(u.f)+'</div>'
     + '<h2>Le jour du gibbush</h2>'
     + '<div class="card"><b>Ce qu\'on regarde vraiment</b><ul class="focus"><li>Tu continues quand tu es à bout. Abandonner compte bien plus qu\'arriver dernier.</li><li>Tu aides les autres, même quand personne ne te regarde.</li><li>Tu écoutes les consignes et tu les exécutes vite et bien.</li><li>Tu restes calme et tu ne te plains pas.</li></ul></div>'
     + '<div class="card"><b>La veille et le matin</b><ul class="focus"><li>Dors tôt les 3 nuits d\'avant, pas seulement la veille.</li><li>Mange comme d\'habitude : pas de nouveauté le jour J.</li><li>Bois régulièrement dès la veille.</li><li>Chaussures de course déjà rodées, chaussettes de rechange.</li></ul></div>'
-    + '<div class="card warn"><b>Sécurité</b><ul class="focus"><li>En été, entraîne-toi avant 8 h ou après 18 h. La chaleur en Israël peut provoquer un coup de chaleur.</li><li>Au moins 1 L d\'eau par heure d\'effort.</li><li>Douleur vive, vertige ou nausée : arrête-toi. Si une douleur dure plus de 3 jours, va voir un médecin.</li><li>Pour une unité combattante, il faut un profil médical compatible : vérifie celui qu\'exige ton unité.</li></ul></div>'
+    + '<div class="card warn"><b>Sécurité (conseils officiels de Tsahal)</b><ul class="focus"><li>Avant de commencer, fais un contrôle chez ton médecin.</li><li>Augmente les distances petit à petit. Si tu as mal pendant l\'effort, ralentis.</li><li>À l\'entraînement, ne va pas jusqu\'à l\'épuisement.</li><li>En été, entraîne-toi avant 8 h ou après 18 h. La chaleur en Israël peut provoquer un coup de chaleur.</li><li>Au moins 1 L d\'eau par heure d\'effort.</li><li>Douleur vive, vertige ou nausée : arrête-toi. Si une douleur dure plus de 3 jours, va voir un médecin.</li><li>Pour une unité combattante, il faut un profil médical compatible : vérifie celui qu\'exige ton unité.</li></ul></div>'
     + '<p class="muted">Tsav n\'est pas une application officielle de Tsahal. Pour les dates, les conditions d\'entrée et les barèmes, la référence est ta lishkat giyous.</p>'
     + '<h2>Réglages</h2><div class="card"><p class="muted" style="margin-top:0">Changer d\'unité ou de date recrée le programme. Tes résultats de tests sont gardés.</p><button class="btn2" id="reset">Changer d\'unité ou de date</button><div id="confirm" hidden style="margin-top:10px"><p>Ton programme actuel et les séances cochées seront remplacés.</p><div class="row"><button class="btn2" id="no">Annuler</button><button class="btn" id="yes">Oui, recommencer</button></div></div></div>';
   $("app").innerHTML = h;
